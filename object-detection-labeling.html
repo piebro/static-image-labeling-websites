@@ -163,6 +163,8 @@ document.getElementById('imageFolder').addEventListener('change', async (event) 
         annotation: null
     }));
 
+    images.sort((a, b) => a.name.localeCompare(b.name));
+
     if (images.length > 0) {
         currentImageIndex = 0;
         displayCurrentImage();
