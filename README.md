@@ -2,7 +2,7 @@
 
 Static and simple websites for labeling images for computer vision applications.
 
-1. [Website](https://github.com/piebro/static-image-labeling-websites/object-detection-labeling.html) for labeling bounding boxes for one object class with 0 or 1 objects per image.
+1. [Website](https://piebro.github.io/static-image-labeling-websites/object-detection-labeling.html) for labeling bounding boxes for one object class with 0 or 1 objects per image.
 2. TODO: Website for annotating image for classification
 
 These annotation workflows are very opinionated and optimized for specific labeling tasks I have used.
