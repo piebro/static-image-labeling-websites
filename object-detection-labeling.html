@@ -111,7 +111,7 @@ input[type="file"] {
     The annotation workflow assumes that there is only one class of objects and that these can occur 0 or 1 time per image.
     If your workflow has other assumptions, you can just fork the open source <a href="https://github.com/piebro/static-image-labeling-websites">code</a>.
     <br>
-    previous image: "a", next image "s", draw bbox: "left click mouse drag", delete bbox: "q" or "mouse right click"
+    previous image: "a", next image "s", draw bbox: "left click mouse drag", delete bbox: "d" or "mouse right click"
 </p>
 <p>1. upload image folder: <input type="file" id="imageFolder" directory="" webkitdirectory="" multiple></p>
 <p>2. (optional) upload existing annotations (pascal voc format,XML): <input type="file" id="annotationFiles" webkitdirectory="" multiple></p>
@@ -395,7 +395,7 @@ document.addEventListener('keydown', (event) => {
     switch(event.key) {
         case 'a': prevImage(); break;
         case 's': nextImage(); break;
-        case 'q': deleteCurrentAnnotation(); break;
+        case 'd': deleteCurrentAnnotation(); break;
     }
 });
 
