@@ -111,7 +111,7 @@ input[type="file"] {
     The annotation workflow assumes that there is only one class of objects and that these can occur 0 or 1 time per image.
     If your workflow has other assumptions, you can just fork the open source <a href="https://github.com/piebro/static-image-labeling-websites">code</a>.
     <br>
-    previous image: "a", next image "s", draw bbox: "left click mouse drag", delete bbox: "d" or "mouse right click"
+    previous image: "a", next image "s", draw bbox: "left click mouse drag", delete bbox: "d" or "mouse right click", apply annotation from the previous image: "w"
 </p>
 <p>1. upload image folder: <input type="file" id="imageFolder" directory="" webkitdirectory="" multiple></p>
 <p>2. (optional) upload existing annotations (pascal voc format,XML): <input type="file" id="annotationFiles" webkitdirectory="" multiple></p>
@@ -144,6 +144,7 @@ let currentAnnotationScale = [0, 0];
 let naturalImageWidthOfAllImages = 0;
 let naturalImageHeightOfAllImages = 0;
 let annotationsSaved = true;
+let lastMousePos = { x: 0, y: 0 };
 
 
 const canvas = document.getElementById('imageCanvas');
@@ -191,13 +192,8 @@ function displayCurrentImage() {
             // Assuming all images have the same width and hight
             naturalImageWidthOfAllImages = img.width
             naturalImageHeightOfAllImages = img.height
-            
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous drawings
 
-            // Draw bounding box if it exists
-            if (currentImage.annotation) {
-                drawBoundingBox(currentImage.annotation);
-            }
+            drawOverlay(lastMousePos.x, lastMousePos.y);
         };
         img.src = currentImage.url;
         updateImageDisplay();
@@ -326,7 +322,7 @@ document.getElementById('downloadAnnotations').addEventListener('click', () => {
     zip.generateAsync({type: "blob"})
     .then(function(content) {
         // Trigger download
-        saveAs(content, "annotations.zip");
+        saveAs(content, "Annotations.zip");
         annotationsSaved = true;
     });
 });
@@ -396,8 +392,18 @@ document.addEventListener('keydown', (event) => {
         case 'a': prevImage(); break;
         case 's': nextImage(); break;
         case 'd': deleteCurrentAnnotation(); break;
+        case 'w': applyLastAnnotation(); break; // Add this line
     }
 });
+
+function applyLastAnnotation() {
+    if (currentImageIndex > 0 && images.length > 0 && currentImageIndex < images.length) {
+        // Copy the lastAnnotation to the current image's annotation
+        images[currentImageIndex].annotation = { ...images[currentImageIndex-1].annotation };
+        displayCurrentImage();
+        annotationsSaved = false;
+    }
+}
 
 function deleteCurrentAnnotation() {
     if (images.length == 0) return;
@@ -423,7 +429,8 @@ canvas.addEventListener('mousedown', (e) => {
 canvas.addEventListener('mousemove', (e) => {
     if (images.length == 0) return;
     const pos = getMousePos(canvas, e);
-    drawOverlay(pos.x, pos.y)
+    lastMousePos = pos; // Update the lastMousePos
+    drawOverlay(pos.x, pos.y);
 });
 
 canvas.addEventListener('mouseup', (e) => {
@@ -434,6 +441,7 @@ canvas.addEventListener('mouseup', (e) => {
     annotationsSaved = false
     images[currentImageIndex].annotation = { xmin: startX/currentAnnotationScale[0], ymin: startY/currentAnnotationScale[1], xmax: endX/currentAnnotationScale[0], ymax: endY/currentAnnotationScale[1] };
     displayCurrentImage();
+    
 });
 
 function getMousePos(canvas, evt) {
@@ -445,7 +453,7 @@ function getMousePos(canvas, evt) {
 }
 
 function drawOverlay(mouseX, mouseY) {
-    if (!isDrawing || images.length === 0) return;
+    if (images.length === 0) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawCrosshair(mouseX, mouseY);
