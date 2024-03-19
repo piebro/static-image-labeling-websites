@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Classification Labeling</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.2/FileSaver.min.js"></script>
+<style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    overflow-y: scroll;
+    height: 100%;
+    font: 100%/1.5 sans-serif;
+    word-wrap: break-word;
+    margin: 0 auto;
+    padding: 1.5em;
+}
+
+@media (min-width: 768px) {
+    html {
+        font-size: 125%;
+        max-width: 65em;
+    }
+}
+
+h1, h2, h3, h4 {
+    margin: 0 0 1.5rem 0;
+    line-height: 1.25;
+    color: #333;
+}
+
+a {
+    color: #fa6432;
+    text-decoration: none;
+}
+
+a:hover, a:focus, a:active {
+    text-decoration: underline;
+}
+
+p {
+    margin: 1em 0;
+    line-height: 1.5;
+}
+
+p code {
+    background-color: #eee;
+    padding: 0.05em 0.2em;
+    border: 1px solid #ccc;
+}
+
+ol, ul {
+    margin: 1em;
+}
+
+ol li ol, ol li ul, ul li ol, ul li ul {
+    margin: 0 2em;
+}
+
+ol li p, ul li p {
+    margin: 0;
+}
+
+.image-container img {
+    width: auto;
+    height: 30em;
+    object-fit: contain;
+    display: block;
+    margin: 20px auto;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+button {
+    font-size: 70%;
+    padding: 2px 6px
+}
+
+
+input[type="file"] {
+    font-size: 70%;
+    cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+<h1>Simple Custom Image Classification</h1>
+<p>This is a static classification website. Press a key to classify an image and move to the next one. Download your work at any time.</p>
+<p>1. Upload image folder: <input type="file" id="imageFolder" directory="" webkitdirectory="" multiple></p>
+<p>2. Upload Annotations File: <input type="file" id="annotationsFile" accept=".txt"></p>
+<div class="image-container">
+    <img id="imageDisplay" style="max-width: 100%; max-height: 70vh; display: block; margin: 20px auto;" />
+    <div class="controls">
+        <button id="prevImage">Previous</button>
+        <input type="text" id="jumpToImage" placeholder="0" style="width: 40px; font-size: 70%;">
+        <span id="totalImages"></span>
+        <button id="nextImage">Next</button>
+    </div>
+    <div class="controls">
+        <span id="currentImageName" style="margin: 0 10px;"></span>
+    </div>
+    <div class="controls">
+        <button id="downloadAnnotations">Download Annotations</button>
+    </div>
+    
+</div>
+
+<script>
+let images = [];
+let currentImageIndex = 0;
+let annotations = {};
+let annotationsSaved = true;
+
+const imageDisplay = document.getElementById('imageDisplay');
+
+document.getElementById('imageFolder').addEventListener('change', async (event) => {
+    if (!annotationsSaved && !confirm("You have unsaved annotations. Loading new images will discard them. Continue?")) {
+        event.target.value = ''; // Clear the input to reset its state
+        return;
+    }
+    annotationsSaved = true;
+
+    images = Array.from(event.target.files).map(file => ({
+        url: URL.createObjectURL(file),
+        name: file.name
+    }));
+    images.sort((a, b) => a.name.localeCompare(b.name));
+    if (images.length > 0) {
+        currentImageIndex = 0;
+        displayCurrentImage();
+    }
+});
+
+function displayCurrentImage() {
+    if (images.length > 0 && currentImageIndex < images.length) {
+        const currentImage = images[currentImageIndex];
+        imageDisplay.src = currentImage.url;
+        document.getElementById('currentImageName').textContent = currentImage.name;
+    }
+    updateImageDisplay()
+}
+
+function updateImageDisplay() {
+    if (images.length > 0 && currentImageIndex < images.length) {
+        document.getElementById('jumpToImage').value = currentImageIndex + 1;
+        document.getElementById('totalImages').textContent = `of ${images.length} images`;
+    }
+}
+
+document.getElementById('annotationsFile').addEventListener('change', function(event) {
+    if (!annotationsSaved && !confirm("You have unsaved annotations. Loading new images will discard them. Continue?")) {
+        event.target.value = ''; // Clear the input to reset its state
+        return;
+    }
+    annotationsSaved = true;
+
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const content = e.target.result;
+            // Parse the annotations file and update the annotations object
+            const lines = content.split('\n');
+            lines.forEach(line => {
+                const [filename, label] = line.split(' => ');
+                if (filename && label) {
+                    annotations[filename.trim()] = label.trim();
+                }
+            });
+            // Filter out annotated images
+            images = images.filter(image => !annotations[image.name]);
+            if (images.length > 0) {
+                currentImageIndex = 0;
+                displayCurrentImage();
+            }
+        };
+        reader.readAsText(file);
+    }
+});
+
+document.addEventListener('keydown', (event) => {
+    const key = event.key; // Use event.key to detect which key was pressed
+    if (key === 'ArrowLeft') {
+        prevImage(); // Move to the previous image
+    } else if (key === 'ArrowRight') {
+        nextImage(); // Move to the next image
+    } else if (key.match(/^[a-z]$/)) { // Ensure it's a single letter for classification
+        if (images.length > 0 && currentImageIndex < images.length) {
+            annotations[images[currentImageIndex].name] = key;
+            nextImage();
+        }
+    }
+});
+
+document.getElementById('downloadAnnotations').addEventListener('click', () => {
+    // Convert annotations object to an array of [filename, label] pairs
+    const annotationsArray = Object.entries(annotations);
+
+    // Sort the array by filename
+    const sortedAnnotations = annotationsArray.sort((a, b) => a[0].localeCompare(b[0]));
+
+    // Map the sorted array to the desired string format
+    const content = sortedAnnotations
+        .map(([filename, label]) => `${filename} => ${label}`)
+        .join('\n');
+    
+    // Create a blob with the sorted content and trigger the download
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    saveAs(blob, "classification-annotations.txt");
+});
+
+document.getElementById('prevImage').addEventListener('click', () => {
+    prevImage()
+});
+
+function prevImage() {
+    if (currentImageIndex > 0) {
+        currentImageIndex -= 1;
+        displayCurrentImage();
+    }
+}
+
+document.getElementById('nextImage').addEventListener('click', () => {
+    nextImage()
+});
+
+function nextImage() {
+    if (currentImageIndex < images.length - 1) {
+        currentImageIndex += 1;
+        displayCurrentImage();
+    }
+}
+
+document.getElementById('jumpToImage').addEventListener('input', function(e) {
+    let inputValue = parseInt(e.target.value, 10);
+    if (!isNaN(inputValue) && inputValue >= 1 && inputValue <= images.length) {
+        currentImageIndex = inputValue - 1; // Convert from 1-based to 0-based index
+        displayCurrentImage();
+    }
+});
+
+document.getElementById('jumpToImage').addEventListener('change', () => {
+    const jumpToIndex = parseInt(document.getElementById('jumpToImage').value, 10) - 1; // Get number from input field
+    if (!isNaN(jumpToIndex) && jumpToIndex >= 0 && jumpToIndex < images.length) {
+        currentImageIndex = jumpToIndex;
+        displayCurrentImage();
+    } else {
+        alert('Invalid image number.');
+        updateImageDisplay(); // Reset input field to current image number in case of invalid input
+    }
+});
+
+window.addEventListener('beforeunload', function (e) {
+    // If annotations have been saved, allow the user to leave without a warning
+    if (annotationsSaved) {
+        return undefined;
+    }
+
+    // For unsaved annotations, show a confirmation dialog
+    const confirmationMessage = 'You have unsaved annotations. Are you sure you want to leave?';
+
+    // Some browsers require setting the returnValue of the event
+    e.returnValue = confirmationMessage; // Gecko, Trident, Chrome 34+
+    return confirmationMessage; // Gecko, WebKit, Chrome <34
+});
+
+displayCurrentImage();
+</script>
+</body>
+</html>
