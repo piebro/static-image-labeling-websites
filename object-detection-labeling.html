@@ -161,28 +161,6 @@ const ctx = canvas.getContext('2d');
 const imageDisplay = document.getElementById('imageDisplay');
 
 
-
-document.getElementById('searchImage').addEventListener('input', function(e) {
-    const searchValue = e.target.value.toLowerCase();
-    if (searchValue.length > 0) {
-        const filteredImages = images.filter(image => image.name.toLowerCase().startsWith(searchValue));
-        if (filteredImages.length === 1) {
-            const foundIndex = images.indexOf(filteredImages[0]);
-            if (foundIndex !== -1) {
-                currentImageIndex = foundIndex;
-                displayCurrentImage();
-                document.getElementById('searchResult').textContent = ''; // Clear search result text
-            }
-        } else {
-            document.getElementById('searchResult').textContent = filteredImages.length === 0 ? 'No matches found.' : 'Multiple matches found.';
-        }
-    } else {
-        document.getElementById('searchResult').textContent = ''; // Clear search result text when input is cleared
-    }
-});
-
-
-
 document.getElementById('imageFolder').addEventListener('change', async (event) => {
     if (!annotationsSaved && !confirm("You have unsaved annotations. Loading new images will discard them. Continue?")) {
         event.target.value = ''; // Clear the input to reset its state
@@ -342,6 +320,25 @@ document.getElementById('jumpToImage').addEventListener('change', () => {
     } else {
         alert('Invalid image number.');
         updateImageDisplay(); // Reset input field to current image number in case of invalid input
+    }
+});
+
+document.getElementById('searchImage').addEventListener('input', function(e) {
+    const searchValue = e.target.value.toLowerCase();
+    if (searchValue.length > 0) {
+        const filteredImages = images.filter(image => image.name.toLowerCase().startsWith(searchValue));
+        if (filteredImages.length === 1) {
+            const foundIndex = images.indexOf(filteredImages[0]);
+            if (foundIndex !== -1) {
+                currentImageIndex = foundIndex;
+                displayCurrentImage();
+                document.getElementById('searchResult').textContent = ''; // Clear search result text
+            }
+        } else {
+            document.getElementById('searchResult').textContent = filteredImages.length === 0 ? 'No matches found.' : 'Multiple matches found.';
+        }
+    } else {
+        document.getElementById('searchResult').textContent = ''; // Clear search result text when input is cleared
     }
 });
 
