@@ -120,12 +120,21 @@ input[type="file"] {
     <img id="imageDisplay" style="max-width: 100%; max-height: 70vh; display: block; margin: 20px auto;" />
     <canvas id="imageCanvas" style="position: absolute; top: 0; left: 0;"></canvas>
     <div class="controls">
+        <span id="currentImageName" style="margin: 0 10px;"></span>
+    </div>
+    <div class="controls">
         <button id="prevImage">Previous</button>
         <input type="text" id="jumpToImage" placeholder="0" style="width: 40px; font-size: 70%;">
         <span id="totalImages"></span>
         <button id="nextImage">Next</button>
     </div>
-    <button id="downloadAnnotations">Download Annotations</button>
+    <div class="controls">
+        
+        <input type="text" id="searchImage" placeholder="Search image by filename..." style="margin-right: 10px;">
+        <span id="searchResult"></span>
+        <button id="downloadAnnotations">Download Annotations</button>
+    </div>    
+    
 </div>
 <br><br><br><br><br><br><br><br><br><br>
 
@@ -150,6 +159,28 @@ let lastMousePos = { x: 0, y: 0 };
 const canvas = document.getElementById('imageCanvas');
 const ctx = canvas.getContext('2d');
 const imageDisplay = document.getElementById('imageDisplay');
+
+
+
+document.getElementById('searchImage').addEventListener('input', function(e) {
+    const searchValue = e.target.value.toLowerCase();
+    if (searchValue.length > 0) {
+        const filteredImages = images.filter(image => image.name.toLowerCase().startsWith(searchValue));
+        if (filteredImages.length === 1) {
+            const foundIndex = images.indexOf(filteredImages[0]);
+            if (foundIndex !== -1) {
+                currentImageIndex = foundIndex;
+                displayCurrentImage();
+                document.getElementById('searchResult').textContent = ''; // Clear search result text
+            }
+        } else {
+            document.getElementById('searchResult').textContent = filteredImages.length === 0 ? 'No matches found.' : 'Multiple matches found.';
+        }
+    } else {
+        document.getElementById('searchResult').textContent = ''; // Clear search result text when input is cleared
+    }
+});
+
 
 
 document.getElementById('imageFolder').addEventListener('change', async (event) => {
@@ -189,13 +220,17 @@ function displayCurrentImage() {
 
             currentAnnotationScale = [canvas.width / img.width, canvas.height / img.height]
 
-            // Assuming all images have the same width and hight
-            naturalImageWidthOfAllImages = img.width
-            naturalImageHeightOfAllImages = img.height
+            // Assuming all images have the same width and height
+            naturalImageWidthOfAllImages = img.width;
+            naturalImageHeightOfAllImages = img.height;
 
             drawOverlay(lastMousePos.x, lastMousePos.y);
         };
         img.src = currentImage.url;
+
+        // Update the filename display
+        document.getElementById('currentImageName').textContent = currentImage.name;
+
         updateImageDisplay();
     }
 }
