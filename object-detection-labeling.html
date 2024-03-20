@@ -389,6 +389,17 @@ function createVocXml(annotation, filename) {
     objectEl.appendChild(nameEl);
 
     const bndboxEl = xmlDoc.createElement('bndbox');
+    if (annotation["xmin"] > annotation["xmax"]){
+        tempMax = annotation["xmax"]
+        annotation["xmax"] = annotation["xmin"]
+        annotation["xmin"] = tempMax
+    }
+    if (annotation["ymin"] > annotation["ymax"]){
+        tempMax = annotation["ymax"]
+        annotation["ymax"] = annotation["ymin"]
+        annotation["ymin"] = tempMax
+    }
+
     ['xmin', 'ymin', 'xmax', 'ymax'].forEach((tag) => {
         const el = xmlDoc.createElement(tag);
         el.textContent = annotation[tag];
@@ -472,6 +483,7 @@ canvas.addEventListener('mouseup', (e) => {
     isDrawing = false;
     annotationsSaved = false
     images[currentImageIndex].annotation = { xmin: startX/currentAnnotationScale[0], ymin: startY/currentAnnotationScale[1], xmax: endX/currentAnnotationScale[0], ymax: endY/currentAnnotationScale[1] };
+    console.log(images[currentImageIndex].annotation)
     displayCurrentImage();
     
 });
