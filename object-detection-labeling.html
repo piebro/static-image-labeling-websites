@@ -272,10 +272,10 @@ function parseAnnotation(xmlString, fileName) {
         if (matchedImage) {
             const bndbox = xmlDoc.getElementsByTagName('bndbox')[0];
             if (bndbox) {
-                const xmin = parseInt(bndbox.getElementsByTagName('xmin')[0].childNodes[0].nodeValue, 10);
-                const ymin = parseInt(bndbox.getElementsByTagName('ymin')[0].childNodes[0].nodeValue, 10);
-                const xmax = parseInt(bndbox.getElementsByTagName('xmax')[0].childNodes[0].nodeValue, 10);
-                const ymax = parseInt(bndbox.getElementsByTagName('ymax')[0].childNodes[0].nodeValue, 10);
+                const xmin = parseFloat(bndbox.getElementsByTagName('xmin')[0].childNodes[0].nodeValue, 10);
+                const ymin = parseFloat(bndbox.getElementsByTagName('ymin')[0].childNodes[0].nodeValue, 10);
+                const xmax = parseFloat(bndbox.getElementsByTagName('xmax')[0].childNodes[0].nodeValue, 10);
+                const ymax = parseFloat(bndbox.getElementsByTagName('ymax')[0].childNodes[0].nodeValue, 10);
                 matchedImage.annotation = { xmin, ymin, xmax, ymax };
             }
         }
