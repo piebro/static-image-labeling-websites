@@ -399,6 +399,11 @@ function createVocXml(annotation, filename) {
         annotation["ymax"] = annotation["ymin"]
         annotation["ymin"] = tempMax
     }
+    // do clipping
+    annotation["xmin"] = Math.max(0, annotation["xmin"]);
+    annotation["ymin"] = Math.max(0, annotation["ymin"]);
+    annotation["xmax"] = Math.min(naturalImageWidthOfAllImages, annotation["xmax"]);
+    annotation["ymax"] = Math.min(naturalImageHeightOfAllImages, annotation["ymax"]);
 
     ['xmin', 'ymin', 'xmax', 'ymax'].forEach((tag) => {
         const el = xmlDoc.createElement(tag);
@@ -483,7 +488,6 @@ canvas.addEventListener('mouseup', (e) => {
     isDrawing = false;
     annotationsSaved = false
     images[currentImageIndex].annotation = { xmin: startX/currentAnnotationScale[0], ymin: startY/currentAnnotationScale[1], xmax: endX/currentAnnotationScale[0], ymax: endY/currentAnnotationScale[1] };
-    console.log(images[currentImageIndex].annotation)
     displayCurrentImage();
     
 });
