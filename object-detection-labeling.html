@@ -387,7 +387,7 @@ document.getElementById('searchImage').addEventListener('input', function(e) {
 document.getElementById('downloadAnnotations').addEventListener('click', () => {
     const zip = new JSZip();
     images.forEach((image, index) => {
-        if (image.annotations) {
+        if (image.annotations.length > 0) {
             const xmlContent = createVocXml(image.annotations, image.name);
             zip.file(image.name.replace(".jpeg", ".xml"), xmlContent);
         }
