@@ -223,6 +223,9 @@ function displayCurrentImage() {
             canvas.style.left = `50%`;
             canvas.style.transform = 'translateX(-50%)';
 
+            // Assuming all images have the same width and height
+            naturalImageWidthOfAllImages = img.width;
+            naturalImageHeightOfAllImages = img.height;
             currentAnnotationScale = [canvas.width / img.width, canvas.height / img.height];
 
             drawOverlay(lastMousePos.x, lastMousePos.y);
@@ -253,6 +256,8 @@ function drawBoundingBoxes() {
         });
     }
 }
+
+// TODO: on resize: displayCurrentImage()
 
 function updateImageDisplay() {
     let list = getActiveImageList();
@@ -678,9 +683,9 @@ function drawTemporaryBox(x1, y1, x2, y2) {
 }
 
 function drawBoundingBoxIfAvailable() {
-    const currentImage = images[currentImageIndex];
-    if (currentImage && currentImage.annotations) {
-        drawBoundingBoxes(currentImage.annotations);
+    let list = getActiveImageList();
+    if (list.length > 0 && currentImageIndex < list.length) {
+        drawBoundingBoxes();
     }
 }
 
