@@ -118,6 +118,7 @@ input[type="file"] {
     delete last drawn bbox: "d",
     remove bbox that is closest to the mouse: "mouse right click",
     apply annotations from the previous image: "w",
+    apply last drawn annotations again: "q",
     change type of bbox that is closest to the mouse the the current one: "double left click"
 </p>
 <p>1. upload image folder: <input type="file" id="imageFolder" directory="" webkitdirectory="" multiple></p>
@@ -160,6 +161,7 @@ let naturalImageHeightOfAllImages = 0;
 let annotationsSaved = true;
 let lastMousePos = { x: 0, y: 0 };
 let filteredImages = [];
+let lastDrawAnnotation = null;
 
 const objectTypes = [
     { key: '1', name: 'object1', color: 'red' },
@@ -510,17 +512,28 @@ document.addEventListener('keydown', (event) => {
             case 'a': prevImage(); break;
             case 's': nextImage(); break;
             case 'd': deleteCurrentAnnotation(); break;
-            case 'w': applyLastAnnotation(); break;
+            case 'w': applyAnnotationOfPreviousImage(); break;
+            case 'q': applyLastAnnotation(); break;
         }
     }
 });
 
-function applyLastAnnotation() {
+function applyAnnotationOfPreviousImage() {
     let list = getActiveImageList();
     if (currentImageIndex > 0 && list.length > 0 && currentImageIndex < list.length) {
         // do a deep copy of previous annotations
         const prevAnnotations = JSON.parse(JSON.stringify(list[currentImageIndex - 1].annotations));
         list[currentImageIndex].annotations = prevAnnotations;
+        displayCurrentImage();
+        annotationsSaved = false;
+    }
+}
+
+function applyLastAnnotation() {
+    let list = getActiveImageList();
+    if (currentImageIndex > 0 && list.length > 0 && currentImageIndex < list.length && lastDrawAnnotation !== null) {
+        // do a deep copy of the last annotations
+        list[currentImageIndex].annotations.push(JSON.parse(JSON.stringify(lastDrawAnnotation)));
         displayCurrentImage();
         annotationsSaved = false;
     }
@@ -665,6 +678,7 @@ canvas.addEventListener('mouseup', (e) => {
         };
         if (currentImageIndex >= 0 && currentImageIndex < list.length) {
             list[currentImageIndex].annotations.push(newAnnotation);  // Add annotation to the correct image
+            lastDrawAnnotation = newAnnotation
             displayCurrentImage();
         }
     }
