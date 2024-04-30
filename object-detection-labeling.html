@@ -689,6 +689,13 @@ function drawBoundingBoxIfAvailable() {
     }
 }
 
+window.addEventListener('resize', function() {
+    // Only redraw if there are images
+    if (images.length > 0) {
+        displayCurrentImage();
+    }
+});
+
 displayCurrentImage();
 </script>
 
