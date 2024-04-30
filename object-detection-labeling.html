@@ -136,7 +136,7 @@ input[type="file"] {
     </div>
     <div class="controls">
         
-        <input type="text" id="searchImage" placeholder="Search image by filename..." style="margin-right: 10px;">
+        <input type="text" id="searchImage" placeholder="Filter image by filename..." style="margin-right: 10px;">
         <span id="searchResult"></span>
         <button id="downloadAnnotations">Download Annotations</button>
     </div>    
@@ -158,6 +158,7 @@ let naturalImageWidthOfAllImages = 0;
 let naturalImageHeightOfAllImages = 0;
 let annotationsSaved = true;
 let lastMousePos = { x: 0, y: 0 };
+let filteredImages = [];
 
 const objectTypes = [
     { key: '1', name: 'object1', color: 'red' },
@@ -202,14 +203,19 @@ document.getElementById('imageFolder').addEventListener('change', async (event) 
     }
 });
 
+function getActiveImageList() {
+    return filteredImages.length > 0 ? filteredImages : images;
+}
+
+
 function displayCurrentImage() {
-    if (images.length > 0 && currentImageIndex < images.length) {
-        const currentImage = images[currentImageIndex];
+    let list = getActiveImageList();
+    if (list.length > 0 && currentImageIndex < list.length) {
+        const currentImage = list[currentImageIndex];
         imageDisplay.src = currentImage.url;
         
         const img = new Image();
         img.onload = function() {
-            // Adjust canvas dimensions to match the displayed image
             const rect = imageDisplay.getBoundingClientRect();
             canvas.width = rect.width;
             canvas.height = rect.height;
@@ -217,42 +223,45 @@ function displayCurrentImage() {
             canvas.style.left = `50%`;
             canvas.style.transform = 'translateX(-50%)';
 
-            currentAnnotationScale = [canvas.width / img.width, canvas.height / img.height]
-
-            // Assuming all images have the same width and height
-            naturalImageWidthOfAllImages = img.width;
-            naturalImageHeightOfAllImages = img.height;
+            currentAnnotationScale = [canvas.width / img.width, canvas.height / img.height];
 
             drawOverlay(lastMousePos.x, lastMousePos.y);
         };
         img.src = currentImage.url;
-
-        // Update the filename display
         document.getElementById('currentImageName').textContent = currentImage.name;
 
         updateImageDisplay();
+    } else {
+        document.getElementById('searchResult').textContent = 'No images to display.';
     }
 }
 
 function drawBoundingBoxes() {
-    images[currentImageIndex].annotations.forEach(annotation => {
-        ctx.beginPath();
-        ctx.rect(
-            annotation.xmin * currentAnnotationScale[0],
-            annotation.ymin * currentAnnotationScale[1],
-            (annotation.xmax - annotation.xmin) * currentAnnotationScale[0],
-            (annotation.ymax - annotation.ymin) * currentAnnotationScale[1]
-        );
-        ctx.strokeStyle = annotation.color;
-        ctx.lineWidth = 3;
-        ctx.stroke();
-    });
+    let list = getActiveImageList();
+    if (list.length > 0 && currentImageIndex < list.length) {
+        list[currentImageIndex].annotations.forEach(annotation => {
+            ctx.beginPath();
+            ctx.rect(
+                annotation.xmin * currentAnnotationScale[0],
+                annotation.ymin * currentAnnotationScale[1],
+                (annotation.xmax - annotation.xmin) * currentAnnotationScale[0],
+                (annotation.ymax - annotation.ymin) * currentAnnotationScale[1]
+            );
+            ctx.strokeStyle = annotation.color;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        });
+    }
 }
 
 function updateImageDisplay() {
-    if (images.length > 0 && currentImageIndex < images.length) {
+    let list = getActiveImageList();
+    if (list.length > 0 && currentImageIndex < list.length) {
         document.getElementById('jumpToImage').value = currentImageIndex + 1;
-        document.getElementById('totalImages').textContent = `of ${images.length} images`;
+        document.getElementById('totalImages').textContent = `of ${list.length} images`;
+    } else {
+        document.getElementById('jumpToImage').value = '';
+        document.getElementById('totalImages').textContent = '';
     }
 }
 
@@ -340,7 +349,8 @@ document.getElementById('nextImage').addEventListener('click', () => {
 });
 
 function nextImage() {
-    if (currentImageIndex < images.length - 1) {
+    let list = getActiveImageList();
+    if (currentImageIndex < list.length - 1) {
         currentImageIndex += 1;
         displayCurrentImage();
     }
@@ -366,21 +376,27 @@ document.getElementById('jumpToImage').addEventListener('change', () => {
 });
 
 document.getElementById('searchImage').addEventListener('input', function(e) {
-    const searchValue = e.target.value.toLowerCase();
-    if (searchValue.length > 0) {
-        const filteredImages = images.filter(image => image.name.toLowerCase().startsWith(searchValue));
-        if (filteredImages.length === 1) {
-            const foundIndex = images.indexOf(filteredImages[0]);
-            if (foundIndex !== -1) {
-                currentImageIndex = foundIndex;
-                displayCurrentImage();
-                document.getElementById('searchResult').textContent = ''; // Clear search result text
-            }
+    const searchValue = e.target.value;
+    if (searchValue.trim().length > 0) {
+        // Split the input by commas and trim spaces
+        const filenames = searchValue.split(',').map(s => s.trim());
+        // Filter images by checking if any filename part is included in the image names
+        filteredImages = images.filter(image => 
+            filenames.some(filename => image.name.toLowerCase().includes(filename))
+        );
+
+        if (filteredImages.length > 0) {
+            currentImageIndex = 0; // Reset index to start from the first of the filtered
+            displayCurrentImage(true); // Pass a flag to indicate filtering mode
+            document.getElementById('searchResult').textContent = '';
         } else {
-            document.getElementById('searchResult').textContent = filteredImages.length === 0 ? 'No matches found.' : 'Multiple matches found.';
+            document.getElementById('searchResult').textContent = 'No matches found.';
         }
     } else {
-        document.getElementById('searchResult').textContent = ''; // Clear search result text when input is cleared
+        // Reset the filtered images list and display all images
+        filteredImages = [];
+        displayCurrentImage();
+        document.getElementById('searchResult').textContent = '';
     }
 });
 
@@ -492,23 +508,24 @@ document.addEventListener('keydown', (event) => {
 });
 
 function applyLastAnnotation() {
-    if (currentImageIndex > 0 && images.length > 0 && currentImageIndex < images.length) {
+    let list = getActiveImageList();
+    if (currentImageIndex > 0 && list.length > 0 && currentImageIndex < list.length) {
         // do a deep copy of previous annotations
-        images[currentImageIndex].annotations = JSON.parse(JSON.stringify(images[currentImageIndex - 1].annotations));
+        const prevAnnotations = JSON.parse(JSON.stringify(list[currentImageIndex - 1].annotations));
+        list[currentImageIndex].annotations = prevAnnotations;
         displayCurrentImage();
         annotationsSaved = false;
     }
 }
 
-
 function deleteCurrentAnnotation() {
-    if (images.length == 0) return;
-    if (currentImageIndex < 0 || currentImageIndex >= images.length) return;
-    if (images[currentImageIndex].annotations.length === 0) return;
-    
-    images[currentImageIndex].annotations.pop();
+    let list = getActiveImageList();
+    if (list.length == 0 || currentImageIndex < 0 || currentImageIndex >= list.length) return;
+    if (list[currentImageIndex].annotations.length === 0) return;
+
+    list[currentImageIndex].annotations.pop();
     displayCurrentImage();
-    annotationsSaved = false
+    annotationsSaved = false;
 }
 
 function euclideanDist(x1, y1, x2, y2) {
@@ -546,15 +563,15 @@ function pointToRectDistance(px, py, rect) {
 }
 canvas.addEventListener('contextmenu', function(e) {
     e.preventDefault(); // Prevent the default context menu from appearing
-
-    if (images.length === 0 || currentImageIndex < 0 || currentImageIndex >= images.length) return false;
+    let list = getActiveImageList();
+    if (list.length === 0 || currentImageIndex < 0 || currentImageIndex >= list.length) return false;
 
     const pos = getMousePos(canvas, e);
     let closestDist = Infinity;
     let closestIndex = -1;
 
     // Loop through all annotations to find the closest
-    images[currentImageIndex].annotations.forEach((annotation, index) => {
+    list[currentImageIndex].annotations.forEach((annotation, index) => {
         const dist = pointToRectDistance(pos.x / currentAnnotationScale[0], pos.y / currentAnnotationScale[1], annotation);
         if (dist < closestDist) {
             closestDist = dist;
@@ -564,7 +581,7 @@ canvas.addEventListener('contextmenu', function(e) {
 
     // Remove the closest annotation if one was found
     if (closestIndex !== -1) {
-        images[currentImageIndex].annotations.splice(closestIndex, 1);
+        list[currentImageIndex].annotations.splice(closestIndex, 1);
         displayCurrentImage();
         annotationsSaved = false;
     }
@@ -588,14 +605,15 @@ canvas.addEventListener('mousemove', (e) => {
 });
 
 canvas.addEventListener('mouseup', (e) => {
-    if (images.length == 0) return;
-    if (!isDrawing) return;
-    if (e.button !== 0) return;
+    if (images.length == 0 || !isDrawing || e.button !== 0) return;
     isDrawing = false;
-    annotationsSaved = false
+    annotationsSaved = false;
 
-    const endX = getMousePos(canvas, e).x;
-    const endY = getMousePos(canvas, e).y;
+    let list = getActiveImageList();  // Use the correct list
+
+    const pos = getMousePos(canvas, e);
+    const endX = pos.x;
+    const endY = pos.y;
 
     // Check if the mouse has moved more than a minimal threshold
     const dragThreshold = 10; // pixels
@@ -610,8 +628,10 @@ canvas.addEventListener('mouseup', (e) => {
             type: currentObjectType.name,
             color: currentObjectType.color
         };
-        images[currentImageIndex].annotations.push(newAnnotation);
-        displayCurrentImage();
+        if (currentImageIndex >= 0 && currentImageIndex < list.length) {
+            list[currentImageIndex].annotations.push(newAnnotation);  // Add annotation to the correct image
+            displayCurrentImage();
+        }
     }
 });
 
