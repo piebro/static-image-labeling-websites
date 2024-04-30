@@ -117,7 +117,8 @@ input[type="file"] {
     select object 1-9 for drawing: keys 1-9,
     delete last drawn bbox: "d",
     remove bbox that is closest to the mouse: "mouse right click",
-    apply annotations from the previous image: "w"
+    apply annotations from the previous image: "w",
+    change type of bbox that is closest to the mouse the the current one: "double left click"
 </p>
 <p>1. upload image folder: <input type="file" id="imageFolder" directory="" webkitdirectory="" multiple></p>
 <p>2. (optional) upload existing annotations (pascal voc format,XML): <input type="file" id="annotationFiles" webkitdirectory="" multiple></p>
@@ -256,8 +257,6 @@ function drawBoundingBoxes() {
         });
     }
 }
-
-// TODO: on resize: displayCurrentImage()
 
 function updateImageDisplay() {
     let list = getActiveImageList();
@@ -498,6 +497,10 @@ window.addEventListener('beforeunload', function (e) {
 });
 
 document.addEventListener('keydown', (event) => {
+    // Check if the event target is an input or textarea to ignore key events
+    if (event.target.tagName.toLowerCase() === 'input' || event.target.tagName.toLowerCase() === 'textarea') {
+        return; // Ignore the event if it's coming from an input or textarea
+    }
     if (event.key >= '1' && event.key <= '9') {
         const objectTypeIndex = parseInt(event.key, 10) - 1;
         currentObjectType = objectTypes[objectTypeIndex];
@@ -593,6 +596,33 @@ canvas.addEventListener('contextmenu', function(e) {
 
     return false; // Prevent the default context menu
 }, false);
+
+canvas.addEventListener('dblclick', function(e){
+    // update closest bounding box to current type
+    let list = getActiveImageList();
+    if (list.length === 0 || currentImageIndex < 0 || currentImageIndex >= list.length) return;
+
+    const pos = getMousePos(canvas, e);
+    let closestDist = Infinity;
+    let closestIndex = -1;
+
+    // Find the closest bounding box
+    list[currentImageIndex].annotations.forEach((annotation, index) => {
+        const dist = pointToRectDistance(pos.x / currentAnnotationScale[0], pos.y / currentAnnotationScale[1], annotation);
+        if (dist < closestDist) {
+            closestDist = dist;
+            closestIndex = index;
+        }
+    });
+
+    // Update the type of the closest bounding box, if any
+    if (closestIndex !== -1) {
+        list[currentImageIndex].annotations[closestIndex].type = currentObjectType.name;
+        list[currentImageIndex].annotations[closestIndex].color = currentObjectType.color;
+        displayCurrentImage();
+        annotationsSaved = false;
+    }
+});
 
 canvas.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
