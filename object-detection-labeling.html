@@ -118,7 +118,8 @@ input[type="file"] {
     delete last drawn bbox: "d",
     remove bbox that is closest to the mouse: "mouse right click",
     apply annotations from the previous image: "w",
-    apply last drawn annotations again: "q",
+    "s" and "w" after each other: "q",
+    apply last drawn annotations again: "e",
     change type of bbox that is closest to the mouse the the current one: "double left click"
 </p>
 <p>1. upload image folder: <input type="file" id="imageFolder" directory="" webkitdirectory="" multiple></p>
@@ -513,7 +514,8 @@ document.addEventListener('keydown', (event) => {
             case 's': nextImage(); break;
             case 'd': deleteCurrentAnnotation(); break;
             case 'w': applyAnnotationOfPreviousImage(); break;
-            case 'q': applyLastAnnotation(); break;
+            case 'q': nextImage(); applyAnnotationOfPreviousImage(); break;
+            case 'e': applyLastAnnotation(); break;
         }
     }
 });
@@ -637,35 +639,56 @@ canvas.addEventListener('dblclick', function(e){
     }
 });
 
-canvas.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return;
+window.addEventListener('mousedown', (e) => {
+    if (e.button !== 0 || e.target === document.getElementById('imageFolder')) return;
     const pos = getMousePos(canvas, e);
     startX = pos.x;
     startY = pos.y;
+    startX = Math.max(0, Math.min(startX, canvas.width));
+    startY = Math.max(0, Math.min(startY, canvas.height));
     isDrawing = true;
 });
 
-canvas.addEventListener('mousemove', (e) => {
-    if (images.length == 0) return;
-    const pos = getMousePos(canvas, e);
-    lastMousePos = pos; // Update the lastMousePos
+window.addEventListener('mousemove', (e) => {
+    if (images.length === 0) return;
+    
+    const canvasRect = canvas.getBoundingClientRect();
+    const pos = {
+        x: e.clientX - canvasRect.left,
+        y: e.clientY - canvasRect.top
+    };
+
+    // Constrain the position to the canvas boundaries
+    pos.x = Math.max(0, Math.min(pos.x, canvas.width));
+    pos.y = Math.max(0, Math.min(pos.y, canvas.height));
+
+    lastMousePos = pos;
+
+    if (isDrawing) {
+        endX = pos.x;
+        endY = pos.y;
+    }
     drawOverlay(pos.x, pos.y);
 });
 
-canvas.addEventListener('mouseup', (e) => {
-    if (images.length == 0 || !isDrawing || e.button !== 0) return;
+window.addEventListener('mouseup', (e) => {
+    if (images.length === 0 || !isDrawing || e.button !== 0) return;
     isDrawing = false;
     annotationsSaved = false;
 
-    let list = getActiveImageList();  // Use the correct list
+    let list = getActiveImageList();
 
-    const pos = getMousePos(canvas, e);
-    const endX = pos.x;
-    const endY = pos.y;
+    const canvasRect = canvas.getBoundingClientRect();
+    let endX = e.clientX - canvasRect.left;
+    let endY = e.clientY - canvasRect.top;
+
+    // Constrain endX and endY to canvas boundaries
+    endX = Math.max(0, Math.min(endX, canvas.width));
+    endY = Math.max(0, Math.min(endY, canvas.height));
 
     // Check if the mouse has moved more than a minimal threshold
     const dragThreshold = 10; // pixels
-    const isDragged = Math.abs(endX - startX) > dragThreshold || Math.abs(endY - startY) > dragThreshold;
+    const isDragged = Math.abs(endX - startX) > dragThreshold && Math.abs(endY - startY) > dragThreshold;
 
     if (isDragged) {
         const newAnnotation = {
@@ -677,8 +700,8 @@ canvas.addEventListener('mouseup', (e) => {
             color: currentObjectType.color
         };
         if (currentImageIndex >= 0 && currentImageIndex < list.length) {
-            list[currentImageIndex].annotations.push(newAnnotation);  // Add annotation to the correct image
-            lastDrawAnnotation = newAnnotation
+            list[currentImageIndex].annotations.push(newAnnotation);
+            lastDrawAnnotation = newAnnotation;
             displayCurrentImage();
         }
     }
@@ -699,10 +722,7 @@ function drawOverlay(mouseX, mouseY) {
     drawCrosshair(mouseX, mouseY);
     drawBoundingBoxIfAvailable();
 
-    // Only draw if we are in drawing mode
     if (isDrawing) {
-        endX = mouseX;
-        endY = mouseY;
         drawTemporaryBox(startX, startY, endX, endY);
     }
 }
