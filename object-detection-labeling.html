@@ -99,6 +99,56 @@ input[type="file"] {
     font-size: 70%;
     cursor: pointer;
 }
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 600px;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #f2f2f2;
+}
 </style>
 
 
@@ -111,16 +161,34 @@ input[type="file"] {
     The annotation workflow assumes that there is only one class of objects and that these can occur 0 or 1 time per image.
     If your workflow has other assumptions, you can just fork the open source <a href="https://github.com/piebro/static-image-labeling-websites">code</a>.
     <br>
-    previous image: "a",
-    next image "s",
-    draw bbox: "left click mouse drag",
-    select object 1-9 for drawing: keys 1-9,
-    delete last drawn bbox: "d",
-    remove bbox that is closest to the mouse: "mouse right click",
-    apply annotations from the previous image: "w",
-    "s" and "w" after each other: "q",
-    apply last drawn annotations again: "e",
-    change type of bbox that is closest to the mouse the the current one: "double left click"
+    <div class="controls">
+        <button id="showShortcuts">Shortcuts</button>
+        <button id="downloadAnnotations">Download Annotations</button>
+    </div>
+    <div id="shortcutsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Keyboard Shortcuts</h2>
+            <table>
+                <tr><th>Key</th><th>Action</th></tr>
+                <tr><td>a</td><td>Previous image</td></tr>
+                <tr><td>s</td><td>Next image</td></tr>
+                <tr><td>d</td><td>Delete last drawn bbox</td></tr>
+                <tr><td>w</td><td>Apply annotations from previous image</td></tr>
+                <tr><td>q</td><td>"s" and "w" in sequence</td></tr>
+                <tr><td>e</td><td>Apply last drawn annotations again</td></tr>
+                <tr><td>r</td><td>"mouse right click", "e" and "s" in sequence</td></tr>
+                <tr><td>1-9</td><td>Select object 1-9 for drawing</td></tr>
+            </table>
+            <br>
+            <h3>Mouse Actions</h3>
+            <ul>
+                <li>Left click + drag: Draw bbox</li>
+                <li>Right click: Remove bbox closest to mouse</li>
+                <li>Double left click: Change object of closest bbox to current object</li>
+            </ul>
+        </div>
+    </div>
 </p>
 <p>1. upload image folder: <input type="file" id="imageFolder" directory="" webkitdirectory="" multiple></p>
 <p>2. (optional) upload existing annotations (pascal voc format,XML): <input type="file" id="annotationFiles" webkitdirectory="" multiple></p>
@@ -141,7 +209,7 @@ input[type="file"] {
         
         <input type="text" id="searchImage" placeholder="Filter image by filename..." style="margin-right: 10px;">
         <span id="searchResult"></span>
-        <button id="downloadAnnotations">Download Annotations</button>
+        <!-- <button id="downloadAnnotations">Download Annotations</button> -->
     </div>    
     
 </div>
@@ -181,7 +249,23 @@ let currentObjectType = objectTypes[0];
 const canvas = document.getElementById('imageCanvas');
 const ctx = canvas.getContext('2d');
 const imageDisplay = document.getElementById('imageDisplay');
+const modal = document.getElementById("shortcutsModal");
+const btn = document.getElementById("showShortcuts");
+const span = document.getElementsByClassName("close")[0];
 
+btn.onclick = function() {
+    modal.style.display = "block";
+}
+
+span.onclick = function() {
+    modal.style.display = "none";
+}
+
+window.onclick = function(event) {
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+}
 
 document.getElementById('imageFolder').addEventListener('change', async (event) => {
     if (!annotationsSaved && !confirm("You have unsaved annotations. Loading new images will discard them. Continue?")) {
@@ -516,6 +600,7 @@ document.addEventListener('keydown', (event) => {
             case 'w': applyAnnotationOfPreviousImage(); break;
             case 'q': nextImage(); applyAnnotationOfPreviousImage(); break;
             case 'e': applyLastAnnotation(); break;
+            case 'r': simulateRightClickCanvas(); applyLastAnnotation(); nextImage(); break;
         }
     }
 });
@@ -612,6 +697,15 @@ canvas.addEventListener('contextmenu', function(e) {
     return false; // Prevent the default context menu
 }, false);
 
+function simulateRightClickCanvas() {
+    const event = new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+    });
+    canvas.dispatchEvent(event);
+}
+
 canvas.addEventListener('dblclick', function(e){
     // update closest bounding box to current type
     let list = getActiveImageList();
@@ -674,7 +768,6 @@ window.addEventListener('mousemove', (e) => {
 window.addEventListener('mouseup', (e) => {
     if (images.length === 0 || !isDrawing || e.button !== 0) return;
     isDrawing = false;
-    annotationsSaved = false;
 
     let list = getActiveImageList();
 
@@ -703,6 +796,7 @@ window.addEventListener('mouseup', (e) => {
             list[currentImageIndex].annotations.push(newAnnotation);
             lastDrawAnnotation = newAnnotation;
             displayCurrentImage();
+            annotationsSaved = false;
         }
     }
 });
